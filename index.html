@@ -11,11 +11,13 @@
       <div>
         <p class="eyebrow">Human-machine control system</p>
         <h1>喉镜人机对照诊断系统</h1>
+		      <h2>服务器资源有限，图片加载稍慢，请等待30秒钟，图片就会加载出来~</h2>
       </div>
       <div class="topbar-actions">
         <button class="ghost-button" id="caseSettingsButton" type="button">病例数据设置</button>
         <button class="ghost-button" id="resetCaseButton" type="button">重置当前病例</button>
         <button class="primary-button" id="exportCsvButton" type="button">导出 CSV</button>
+        <a class="ghost-button" href="./admin-results.html" style="text-decoration:none;display:inline-flex;align-items:center;">管理后台</a>
       </div>
     </header>
 
@@ -27,7 +29,21 @@
         <li>从左侧病例队列选择患者，查看同一患者的白光 WLB 与窄带 NBI 图像。</li>
         <li>先在“医生独立诊断”中完成选择题和初诊意见，此时 AI 结果不可见。</li>
         <li>提交初诊后查看 AI 单独输出，再进入“医生复核修正”提交最终意见。</li>
-        <li>全部病例完成后，点击“导出 CSV”保存结果。</li>
+        <li>全部病例完成后，点击“导出 CSV”保存结果，并将结果发送至指定邮箱。</li>
+		    <li>⭐⭐将导出的CSV文件发送至邮箱	<span id="email">aachenzhaoc@163.com</span>
+			<button onclick="copyEmail()">一键复制邮箱地址</button>
+			<script>
+			function copyEmail() {
+			const email = document.getElementById("email").innerText;
+
+			navigator.clipboard.writeText(email).then(() => {
+				alert("复制成功！");
+			});
+			}
+			</script>
+
+		</li>
+		
       </ol>
     </section>
 
@@ -138,6 +154,10 @@
         <p class="eyebrow">开始作答前填写</p>
         <h2 id="doctorLevelTitle">请选择医生级别</h2>
         <p class="helper">该信息将写入所有病例作答结果，用于后续分层统计。选择后才能开始诊断。</p>
+        <label class="field">
+          <span>医生姓名 / 编号</span>
+          <input id="doctorName" type="text" placeholder="请输入您的姓名或工号" required />
+        </label>
         <div class="level-choice-list">
           <label class="level-choice">
             <input type="radio" name="doctorLevel" value="junior" required />
@@ -213,7 +233,7 @@
                   <option value="0">0 低风险</option>
                   <option value="1">1 良性或炎症性病变</option>
                   <option value="2">2 中高风险病变</option>
-                  <option value="3">3 高度可疑恶性 / 最高风险</option>
+                  <option value="3">3 高度可疑恶性 / 高风险</option>
                 </select>
               </label>
               <label class="field">
@@ -240,7 +260,6 @@
       </div>
     </dialog>
 
-    <script src="./config.js"></script>
     <script src="./data/cases.js"></script>
     <script src="./app.js"></script>
   </body>
