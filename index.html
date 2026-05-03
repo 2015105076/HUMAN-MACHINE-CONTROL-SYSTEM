@@ -15,7 +15,12 @@
       <div class="topbar-actions">
         <button class="ghost-button" id="caseSettingsButton" type="button">病例数据设置</button>
         <button class="ghost-button" id="resetCaseButton" type="button">重置当前病例</button>
-        <button class="primary-button" id="exportCsvButton" type="button">导出 CSV</button>
+        <button class="primary-button" id="exportCsvButton" type="button">一键导出 CSV</button>
+        <div class="email-group">
+          <input id="targetEmailInput" type="email" placeholder="收件邮箱地址" class="email-input" />
+          <button class="ghost-button" id="copyEmailButton" type="button">复制邮箱</button>
+          <button class="primary-button" id="sendEmailButton" type="button">发送邮件</button>
+        </div>
       </div>
     </header>
 
@@ -165,6 +170,19 @@
       </form>
     </dialog>
 
+    <dialog id="emailChoiceDialog" class="email-choice-dialog" aria-labelledby="emailChoiceTitle">
+      <div class="email-choice-card">
+        <p class="eyebrow">发送人机对照结果</p>
+        <h2 id="emailChoiceTitle">选择邮件发送方式</h2>
+        <p class="helper">CSV 文件已下载到本地，请选择以下方式将文件发送至 <strong id="emailChoiceAddress">aachenzhaoc@163.com</strong></p>
+        <div class="email-choice-actions">
+          <button class="primary-button" id="openWebMailButton" type="button">打开网页版网易邮箱</button>
+          <button class="ghost-button" id="openMailAppButton" type="button">打开邮件应用程序</button>
+        </div>
+        <button class="dialog-close inline-close" id="closeEmailChoiceButton" type="button" aria-label="关闭">×</button>
+      </div>
+    </dialog>
+
     <dialog id="caseSettingsDialog" class="case-settings-dialog" aria-labelledby="caseSettingsTitle">
       <div class="case-settings-card">
         <div class="settings-head">
@@ -234,6 +252,8 @@
           </div>
           <div class="settings-actions">
             <button class="ghost-button" id="restoreDefaultCasesButton" type="button">恢复默认病例</button>
+            <button class="ghost-button" id="addCaseButton" type="button">添加病例</button>
+            <button class="ghost-button danger" id="deleteCaseButton" type="button">删除当前病例</button>
             <button class="primary-button" type="submit">保存当前病例</button>
           </div>
         </form>

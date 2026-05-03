@@ -4,6 +4,7 @@ const CASES_KEY = "laryngoscope-custom-cases-v1";
 const CASE_SETTINGS_PASSWORD = "wbzdmm123";
 const AGENT_API_BASE = window.LARYNGOSCOPE_AGENT_API_BASE || "";
 const RESULT_SAVE_KEY = "laryngoscope-result-save-v1";
+const DEFAULT_TARGET_EMAIL = window.LARYNGOSCOPE_TARGET_EMAIL || "research-lab@example.com";
 
 const defaultData = JSON.parse(JSON.stringify(window.LARYNGOSCOPE_CASES));
 normalizeDiagnosisOptions(defaultData.diagnosisOptions);
@@ -71,7 +72,17 @@ const els = {
   settingsWlbPreview: document.querySelector("#settingsWlbPreview"),
   settingsNbiPreview: document.querySelector("#settingsNbiPreview"),
   closeCaseSettingsButton: document.querySelector("#closeCaseSettingsButton"),
-  restoreDefaultCasesButton: document.querySelector("#restoreDefaultCasesButton")
+  restoreDefaultCasesButton: document.querySelector("#restoreDefaultCasesButton"),
+  addCaseButton: document.querySelector("#addCaseButton"),
+  deleteCaseButton: document.querySelector("#deleteCaseButton"),
+  copyEmailButton: document.querySelector("#copyEmailButton"),
+  sendEmailButton: document.querySelector("#sendEmailButton"),
+  targetEmailInput: document.querySelector("#targetEmailInput"),
+  emailChoiceDialog: document.querySelector("#emailChoiceDialog"),
+  emailChoiceAddress: document.querySelector("#emailChoiceAddress"),
+  openWebMailButton: document.querySelector("#openWebMailButton"),
+  openMailAppButton: document.querySelector("#openMailAppButton"),
+  closeEmailChoiceButton: document.querySelector("#closeEmailChoiceButton")
 };
 
 const doctorLevelLabels = {
@@ -481,25 +492,10 @@ function resetCurrentCase() {
 async function exportCsv() {
   const payload = buildExportPayload();
   await saveResultsToBackend({ payload, silent: true });
-  const rows = [
-    ["doctor_level", "case_id", "patient_alias", "doctor_initial", "ai_prediction", "ai_confidence", "final_diagnosis", "ai_influence", "doctor_note", "final_note", "doctor_submitted_at", "final_submitted_at"],
-    ...payload.records.map((row) => [
-      row.doctorLevelLabel,
-      row.caseId,
-      row.patientAlias,
-      row.doctorInitialLabel,
-      row.aiPredictionLabel,
-      row.aiConfidence,
-      row.finalDiagnosisLabel,
-      row.aiInfluence,
-      row.doctorNote,
-      row.finalNote,
-      row.doctorSubmittedAt,
-      row.finalSubmittedAt
-    ])
-  ];
+  const rows = buildCsvRows(payload);
   const csv = rows.map((row) => row.map(csvCell).join(",")).join("\n");
-  downloadFile("human-machine-results.csv", csv, "text/csv;charset=utf-8");
+  const filename = getExportFilename();
+  downloadFile(filename, csv, "text/csv;charset=utf-8");
 }
 
 function allCasesCompleted() {
@@ -618,7 +614,7 @@ function unlockCaseSettings(event) {
 
 function validateCases(candidate) {
   if (!Array.isArray(candidate)) throw new Error("病例数据必须是数组。");
-  if (candidate.length !== 20) throw new Error("病例数量必须正好是 20 个。");
+  if (candidate.length < 1) throw new Error("至少需要一个病例。");
   const ids = new Set();
   candidate.forEach((caseItem, index) => {
     if (!caseItem.id || !caseItem.patientAlias || !caseItem.title) throw new Error(`第 ${index + 1} 个病例缺少 id、patientAlias 或 title。`);
@@ -785,6 +781,150 @@ function downloadFile(filename, content, type) {
   URL.revokeObjectURL(link.href);
 }
 
+function generateRandomId(length = 18) {
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let result = "";
+  for (let i = 0; i < length; i++) {
+    result += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return result;
+}
+
+function getExportFilename() {
+  const levelLabel = state.doctorProfile?.levelLabel || "未知级别";
+  const randomId = generateRandomId(18);
+  return `HMCS-${levelLabel}-${randomId}.csv`;
+}
+
+function getTargetEmail() {
+  return els.targetEmailInput?.value?.trim() || DEFAULT_TARGET_EMAIL;
+}
+
+function copyTargetEmail() {
+  const email = getTargetEmail();
+  navigator.clipboard.writeText(email).then(() => {
+    showToast(`邮箱地址已复制：${email}`);
+  }).catch(() => {
+    const input = document.createElement("input");
+    input.value = email;
+    document.body.appendChild(input);
+    input.select();
+    document.execCommand("copy");
+    document.body.removeChild(input);
+    showToast(`邮箱地址已复制：${email}`);
+  });
+}
+
+function sendEmailWithCsv() {
+  const payload = buildExportPayload();
+  const rows = buildCsvRows(payload);
+  const csv = rows.map((row) => row.map(csvCell).join(",")).join("\n");
+  const filename = getExportFilename();
+  const email = getTargetEmail();
+
+  downloadFile(filename, csv, "text/csv;charset=utf-8");
+
+  if (AGENT_API_BASE) {
+    fetch(`${AGENT_API_BASE}/api/send-results`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, csv, filename, payload })
+    }).then((response) => {
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      showToast(`结果已发送至 ${email}`);
+    }).catch(() => {
+      openEmailChoiceDialog(email);
+    });
+  } else {
+    openEmailChoiceDialog(email);
+  }
+}
+
+function openEmailChoiceDialog(email) {
+  els.emailChoiceAddress.textContent = email;
+  els.emailChoiceDialog.showModal();
+}
+
+function showToast(message) {
+  const toast = document.createElement("div");
+  toast.className = "toast";
+  toast.textContent = message;
+  document.body.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add("is-visible"));
+  setTimeout(() => {
+    toast.classList.remove("is-visible");
+    setTimeout(() => document.body.removeChild(toast), 300);
+  }, 2500);
+}
+
+function addNewCase() {
+  const maxId = data.cases.reduce((max, caseItem) => {
+    const match = caseItem.id.match(/case-(\d+)/);
+    return match ? Math.max(max, parseInt(match[1], 10)) : max;
+  }, 0);
+  const newId = `case-${String(maxId + 1).padStart(3, "0")}`;
+  const newCase = {
+    id: newId,
+    patientAlias: `P${String(maxId + 1).padStart(3, "0")}`,
+    title: `病例 ${String(maxId + 1).padStart(3, "0")}`,
+    cohort: "新增病例",
+    groundTruthClassId: 0,
+    images: [],
+    ai: {
+      model: "Custom AI result",
+      predictedClassId: 0,
+      confidence: 0.8,
+      probabilities: [0.8, 0.1, 0.07, 0.03],
+      evidence: ["新增病例，请上传图像并设置 AI 参数"]
+    }
+  };
+  data.cases.push(newCase);
+  state.settingsCaseIndex = data.cases.length - 1;
+  saveCustomCases(data.cases);
+  renderSettingsEditor();
+  render();
+  showToast(`已添加 ${newCase.title}`);
+}
+
+function deleteCurrentCase() {
+  if (data.cases.length <= 1) {
+    alert("至少需要保留一个病例，无法删除。");
+    return;
+  }
+  const caseItem = data.cases[state.settingsCaseIndex];
+  if (!confirm(`确定要删除 ${caseItem.title}（${caseItem.patientAlias}）吗？此操作不可恢复。`)) return;
+  data.cases.splice(state.settingsCaseIndex, 1);
+  state.settingsCaseIndex = Math.min(state.settingsCaseIndex, data.cases.length - 1);
+  state.records = {};
+  state.caseIndex = 0;
+  state.step = "doctor";
+  saveCustomCases(data.cases);
+  saveRecords();
+  renderSettingsEditor();
+  render();
+  showToast(`已删除 ${caseItem.title}`);
+}
+
+function buildCsvRows(payload) {
+  return [
+    ["doctor_level", "case_id", "patient_alias", "doctor_initial", "ai_prediction", "ai_confidence", "final_diagnosis", "ai_influence", "doctor_note", "final_note", "doctor_submitted_at", "final_submitted_at"],
+    ...payload.records.map((row) => [
+      row.doctorLevelLabel,
+      row.caseId,
+      row.patientAlias,
+      row.doctorInitialLabel,
+      row.aiPredictionLabel,
+      row.aiConfidence,
+      row.finalDiagnosisLabel,
+      row.aiInfluence,
+      row.doctorNote,
+      row.finalNote,
+      row.doctorSubmittedAt,
+      row.finalSubmittedAt
+    ])
+  ];
+}
+
 els.caseList.addEventListener("click", (event) => {
   const button = event.target.closest("[data-case-index]");
   if (!button) return;
@@ -858,6 +998,25 @@ els.settingsWlbFiles.addEventListener("change", (event) => handleSettingsFiles(e
 els.settingsNbiFiles.addEventListener("change", (event) => handleSettingsFiles(event, "NBI"));
 els.closeCaseSettingsButton.addEventListener("click", () => els.caseSettingsDialog.close());
 els.restoreDefaultCasesButton.addEventListener("click", restoreDefaultCases);
+els.addCaseButton.addEventListener("click", addNewCase);
+els.deleteCaseButton.addEventListener("click", deleteCurrentCase);
+els.copyEmailButton.addEventListener("click", copyTargetEmail);
+els.sendEmailButton.addEventListener("click", sendEmailWithCsv);
+els.openWebMailButton.addEventListener("click", () => {
+  els.emailChoiceDialog.close();
+  window.open("https://mail.163.com/", "_blank");
+});
+els.openMailAppButton.addEventListener("click", () => {
+  els.emailChoiceDialog.close();
+  const email = getTargetEmail();
+  const subject = `喉镜人机对照结果 - ${state.doctorProfile?.levelLabel || ""}`;
+  const body = `喉镜人机对照诊断结果\n\n医生级别：${state.doctorProfile?.levelLabel || "未填写"}\n病例总数：${data.cases.length}\n导出时间：${new Date().toLocaleString()}\n\nCSV 文件已下载到本地，请手动添加为附件。\n\n--\n喉镜人机对照诊断系统`;
+  window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+});
+els.closeEmailChoiceButton.addEventListener("click", () => els.emailChoiceDialog.close());
 
+if (els.targetEmailInput) {
+  els.targetEmailInput.value = DEFAULT_TARGET_EMAIL;
+}
 render();
 ensureDoctorProfile();

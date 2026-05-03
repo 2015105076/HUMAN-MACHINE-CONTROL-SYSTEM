@@ -849,6 +849,101 @@ button {
   }
 }
 
+.email-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: 8px;
+  padding-left: 16px;
+  border-left: 1px solid var(--line);
+}
+
+.email-input {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--ink);
+  font-size: 13px;
+  width: 200px;
+}
+
+.email-input::placeholder {
+  color: var(--muted);
+}
+
+.danger {
+  color: var(--risk);
+  border-color: var(--risk);
+}
+
+.danger:hover {
+  background: rgba(159, 45, 45, 0.08);
+}
+
+.email-choice-dialog {
+  width: min(480px, calc(100vw - 28px));
+  border: 0;
+  border-radius: 8px;
+  padding: 0;
+  background: transparent;
+  color: var(--ink);
+}
+
+.email-choice-dialog::backdrop {
+  background: rgba(23, 33, 29, 0.62);
+  backdrop-filter: blur(6px);
+}
+
+.email-choice-card {
+  background: var(--panel);
+  border-radius: 8px;
+  padding: clamp(20px, 4vw, 34px);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.28);
+  position: relative;
+}
+
+.email-choice-card h2 {
+  margin: 0 0 8px;
+  font-size: clamp(22px, 3vw, 28px);
+  letter-spacing: 0;
+}
+
+.email-choice-card .helper {
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+.email-choice-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.toast {
+  position: fixed;
+  bottom: 28px;
+  left: 50%;
+  transform: translate(-50%, 16px);
+  background: var(--ink);
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 8px;
+  font-weight: 800;
+  font-size: 14px;
+  z-index: 100;
+  opacity: 0;
+  transition: opacity 220ms ease, transform 220ms ease;
+  pointer-events: none;
+  box-shadow: 0 12px 40px rgba(23, 33, 29, 0.28);
+}
+
+.toast.is-visible {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
 @media (max-width: 760px) {
   .topbar,
   .patient-strip,
@@ -925,6 +1020,28 @@ button {
   }
 
   .settings-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .email-group {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: 0;
+    width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .email-input {
+    flex: 1;
+    min-width: 160px;
+  }
+
+  .email-choice-dialog {
+    width: calc(100vw - 20px);
+    max-height: calc(100svh - 20px);
+  }
+
+  .email-choice-actions {
     grid-template-columns: 1fr;
   }
 }
