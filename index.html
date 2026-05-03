@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>喉镜人机对照诊断系统</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">Human-machine control system</p>
+        <h1>喉镜人机对照诊断系统</h1>
+      </div>
+      <div class="topbar-actions">
+        <button class="ghost-button" id="caseSettingsButton" type="button">病例数据设置</button>
+        <button class="ghost-button" id="resetCaseButton" type="button">重置当前病例</button>
+        <button class="primary-button" id="exportCsvButton" type="button">导出 CSV</button>
+      </div>
+    </header>
+
+    <section class="usage-guide" aria-label="使用方法">
+      <div>
+        <p class="eyebrow">使用方法</p>
+      </div>
+      <ol>
+        <li>从左侧病例队列选择患者，查看同一患者的白光 WLB 与窄带 NBI 图像。</li>
+        <li>先在“医生独立诊断”中完成选择题和初诊意见，此时 AI 结果不可见。</li>
+        <li>提交初诊后查看 AI 单独输出，再进入“医生复核修正”提交最终意见。</li>
+        <li>全部病例完成后，点击“导出 CSV”保存结果。</li>
+      </ol>
+    </section>
+
+    <main class="app-shell">
+      <aside class="case-rail" aria-label="病例列表">
+        <div class="rail-header">
+          <span>病例队列</span>
+          <strong id="caseCount">0/0</strong>
+        </div>
+        <div id="caseList" class="case-list"></div>
+      </aside>
+
+      <section class="workspace">
+        <section class="patient-strip">
+          <div>
+            <p class="eyebrow" id="patientAlias">-</p>
+            <h2 id="caseTitle">请选择病例</h2>
+          </div>
+          <div class="status-group">
+            <span class="status-pill" id="phasePill">医生初诊</span>
+            <span class="status-pill muted" id="savePill">未保存</span>
+          </div>
+        </section>
+
+        <section class="image-stage" aria-label="喉镜图像">
+          <div class="image-toolbar">
+            <div class="segmented" role="tablist" aria-label="图像模态筛选">
+              <button class="segment is-active" type="button" data-modality="ALL">全部</button>
+              <button class="segment" type="button" data-modality="WLB">白光 WLB</button>
+              <button class="segment" type="button" data-modality="NBI">窄带 NBI</button>
+            </div>
+            <label class="toggle">
+              <input id="compareMode" type="checkbox" />
+              <span>对照浏览</span>
+            </label>
+          </div>
+          <div id="imageGrid" class="image-grid"></div>
+        </section>
+      </section>
+
+      <aside class="decision-panel" aria-label="诊断流程">
+        <nav class="stepper" aria-label="流程步骤">
+          <button class="step is-active" type="button" data-step="doctor">1 医生独立诊断</button>
+          <button class="step" type="button" data-step="ai">2 AI 单独输出</button>
+          <button class="step" type="button" data-step="final">3 人看 AI 后修正</button>
+        </nav>
+
+        <form id="doctorForm" class="flow-section is-active">
+          <h3>医生初诊选择题</h3>
+          <p class="helper">本阶段不显示 AI 结果。请仅根据当前患者的白光与窄带图像作答。</p>
+          <div id="doctorOptions" class="choice-list"></div>
+          <label class="field">
+            <span>医生初诊意见</span>
+            <textarea id="doctorNote" rows="4" placeholder="记录主要图像依据、可疑部位或不确定点"></textarea>
+          </label>
+          <button class="primary-button full" type="submit">提交医生初诊，查看 AI</button>
+        </form>
+
+        <section id="aiSection" class="flow-section">
+          <h3>AI 独立输出</h3>
+          <p class="helper">AI 结果在医生初诊提交后显示，用于后续人机对照。</p>
+          <div id="aiResult" class="ai-result"></div>
+          <button class="primary-button full" id="acceptAiButton" type="button">进入医生复核修正</button>
+        </section>
+
+        <form id="finalForm" class="flow-section">
+          <h3>医生复核选择题</h3>
+          <p class="helper">请在已知 AI 输出后给出最终诊断，并标记 AI 对判断的影响。</p>
+          <div id="finalOptions" class="choice-list"></div>
+          <label class="field">
+            <span>AI 对最终意见的影响</span>
+            <select id="aiInfluence">
+              <option value="unchanged">未改变判断</option>
+              <option value="raised-risk">提高风险等级</option>
+              <option value="lowered-risk">降低风险等级</option>
+              <option value="changed-category">改变具体类别</option>
+              <option value="uncertain">仍不确定，建议补充检查</option>
+            </select>
+          </label>
+          <label class="field">
+            <span>复核后诊断意见</span>
+            <textarea id="finalNote" rows="4" placeholder="记录是否采纳 AI、修正理由和下一步建议"></textarea>
+          </label>
+          <button class="primary-button full" type="submit">保存最终诊断</button>
+        </form>
+
+        <section class="summary">
+          <h3>当前病例记录</h3>
+          <dl id="caseSummary"></dl>
+          <div class="case-action" id="caseAction">
+            <button class="primary-button full" id="nextCaseButton" type="button">完成本病例后进入下一例</button>
+            <div class="export-finish-actions" id="finishExportActions">
+              <button class="primary-button full" id="finishExportCsvButton" type="button">全部完成，导出 CSV</button>
+            </div>
+          </div>
+        </section>
+      </aside>
+    </main>
+
+    <dialog id="imageDialog" class="image-dialog">
+      <button class="dialog-close" type="button" aria-label="关闭大图">×</button>
+      <img id="dialogImage" alt="" />
+      <p id="dialogCaption"></p>
+    </dialog>
+
+    <dialog id="doctorLevelDialog" class="doctor-level-dialog" aria-labelledby="doctorLevelTitle">
+      <form id="doctorLevelForm" class="doctor-level-card">
+        <p class="eyebrow">开始作答前填写</p>
+        <h2 id="doctorLevelTitle">请选择医生级别</h2>
+        <p class="helper">该信息将写入所有病例作答结果，用于后续分层统计。选择后才能开始诊断。</p>
+        <div class="level-choice-list">
+          <label class="level-choice">
+            <input type="radio" name="doctorLevel" value="junior" required />
+            <span>
+              <strong>初级</strong>
+              <small>住院医师、低年资医师或同等阅片经验</small>
+            </span>
+          </label>
+          <label class="level-choice">
+            <input type="radio" name="doctorLevel" value="intermediate" required />
+            <span>
+              <strong>中级</strong>
+              <small>主治医师、中等年资医师或同等阅片经验</small>
+            </span>
+          </label>
+          <label class="level-choice">
+            <input type="radio" name="doctorLevel" value="senior" required />
+            <span>
+              <strong>高级</strong>
+              <small>副主任/主任医师、高年资专家或同等阅片经验</small>
+            </span>
+          </label>
+        </div>
+        <button class="primary-button full" type="submit">确认并开始作答</button>
+      </form>
+    </dialog>
+
+    <dialog id="caseSettingsDialog" class="case-settings-dialog" aria-labelledby="caseSettingsTitle">
+      <div class="case-settings-card">
+        <div class="settings-head">
+          <div>
+            <p class="eyebrow">病例数据设置</p>
+            <h2 id="caseSettingsTitle">上传图像并设置病例分类</h2>
+          </div>
+          <button class="dialog-close inline-close" id="closeCaseSettingsButton" type="button" aria-label="关闭">×</button>
+        </div>
+
+        <form id="caseSettingsAuthForm" class="settings-auth">
+          <p class="helper">请输入管理密码后进入病例数据设置界面。</p>
+          <label class="field">
+            <span>管理密码</span>
+            <input id="caseSettingsPassword" type="password" autocomplete="current-password" required />
+          </label>
+          <p class="settings-error" id="caseSettingsError" role="alert"></p>
+          <button class="primary-button full" type="submit">进入设置</button>
+        </form>
+
+        <form id="caseSettingsForm" class="settings-editor" hidden>
+          <p class="helper">选择一个病例后上传白光 WLB 和窄带 NBI 图像，并设置该病例分类。上传图片会保存在当前浏览器本地；保存后会重置作答记录。</p>
+          <div class="settings-layout">
+            <div class="settings-case-list" id="settingsCaseList"></div>
+            <div class="settings-form-grid">
+              <label class="field">
+                <span>病例编号</span>
+                <input id="settingsCaseTitle" type="text" required />
+              </label>
+              <label class="field">
+                <span>患者编号</span>
+                <input id="settingsPatientAlias" type="text" required />
+              </label>
+              <label class="field">
+                <span>病例分类</span>
+                <select id="settingsCaseClass" required>
+                  <option value="0">0 低风险</option>
+                  <option value="1">1 良性或炎症性病变</option>
+                  <option value="2">2 中高风险病变</option>
+                  <option value="3">3 高度可疑恶性 / 最高风险</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>AI 输出类别</span>
+                <select id="settingsAiClass" required>
+                  <option value="0">0 低风险</option>
+                  <option value="1">1 良性或炎症性病变</option>
+                  <option value="2">2 中高风险病变</option>
+                  <option value="3">3 高度可疑恶性 / 最高风险</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>AI 置信度</span>
+                <input id="settingsAiConfidence" type="number" min="0" max="1" step="0.01" required />
+              </label>
+              <label class="field wide">
+                <span>白光 WLB 图像</span>
+                <input id="settingsWlbFiles" type="file" accept="image/*" multiple />
+              </label>
+              <div class="settings-preview wide" id="settingsWlbPreview"></div>
+              <label class="field wide">
+                <span>窄带 NBI 图像</span>
+                <input id="settingsNbiFiles" type="file" accept="image/*" multiple />
+              </label>
+              <div class="settings-preview wide" id="settingsNbiPreview"></div>
+            </div>
+          </div>
+          <div class="settings-actions">
+            <button class="ghost-button" id="restoreDefaultCasesButton" type="button">恢复默认病例</button>
+            <button class="primary-button" type="submit">保存当前病例</button>
+          </div>
+        </form>
+      </div>
+    </dialog>
+
+    <script src="./config.js"></script>
+    <script src="./data/cases.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>

@@ -1,0 +1,2 @@
+doctor_level,case_id,patient_alias,doctor_initial,ai_prediction,ai_confidence,final_diagnosis,ai_influence,doctor_note,final_note,doctor_submitted_at,final_submitted_at
+中级,case-001,C0_P001,低风险,低风险,0.86,低风险,unchanged,示例初诊意见,示例复核意见,2026-04-19T00:00:00.000Z,2026-04-19T00:05:00.000Z
